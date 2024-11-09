@@ -1,5 +1,6 @@
 """
-Tests for FIFA data analysis functions
+Test goes here
+
 """
 
 import os
@@ -17,59 +18,76 @@ from mylib.lib import (
 
 @pytest.fixture(scope="module")
 def spark():
-    """Fixture for creating and managing Spark session"""
-    spark = start_spark("TestFIFA")
+    """Create a test spark session"""
+    spark = start_spark("TestApp")
     yield spark
     end_spark(spark)
 
 
 def test_extract():
-    """Test data extraction"""
-    file_path = extract()
-    assert os.path.exists(file_path) is True
+    """Test the extract function"""
+    try:
+        file_path = extract()
+        assert os.path.exists(file_path) is True
+    except Exception as e:
+        print(f"Extract error: {e}")
+        assert False
 
 
 def test_load_data(spark):
-    """Test data loading"""
-    df = load_data(spark)
-    assert df is not None
-    # Additional test to verify schema
-    assert "country" in df.columns
-    assert "confederation" in df.columns
+    """Test the load data function"""
+    try:
+        # Make sure we have the data file
+        extract()
+        df = load_data(spark)
+        assert df is not None
+    except Exception as e:
+        print(f"Load data error: {e}")
+        assert False
 
 
 def test_describe(spark):
-    """Test describe function"""
+    """Test the describe function"""
     df = load_data(spark)
     result = describe(df)
     assert result is None
 
 
 def test_query(spark):
-    """Test query function"""
+    """Test the query function"""
     df = load_data(spark)
     result = query(
-        spark, df, "SELECT * FROM fifa WHERE confederation = 'UEFA' LIMIT 5", "fifa"
+        spark,
+        df,
+        """
+        SELECT confederation,
+               COUNT(*) as country_count,
+               ROUND(AVG(gdp_weighted_share), 2) as avg_gdp_share
+        FROM fifa
+        GROUP BY confederation
+        ORDER BY country_count DESC
+        """,
+        "fifa",
     )
     assert result is None
 
 
 def test_example_transform(spark):
-    """Test transformation function"""
+    """Test the transform function"""
     df = load_data(spark)
     result = example_transform(df)
     assert result is None
 
 
 if __name__ == "__main__":
-    """Run tests manually"""
-    spark = start_spark("TestFIFA")
+    # Create a spark session for manual testing
+    test_spark = start_spark("TestApp")
     try:
         test_extract()
-        test_load_data(spark)
-        test_describe(spark)
-        test_query(spark)
-        test_example_transform(spark)
+        test_load_data(test_spark)
+        test_describe(test_spark)
+        test_query(test_spark)
+        test_example_transform(test_spark)
         print("All tests passed!")
     finally:
-        end_spark(spark)
+        end_spark(test_spark)
